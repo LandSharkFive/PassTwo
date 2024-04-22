@@ -5,7 +5,7 @@ This project contains a command line password manger.  The application saves pas
 ## Usage
 
 ```
-  Password filename
+  Usage:  passtwo filename
   The filename is required.
 ```
 
