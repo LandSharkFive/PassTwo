@@ -299,13 +299,7 @@ namespace PassTwo
 
         private string Repeat(string text, int count)
         {
-            StringBuilder sb = new StringBuilder();
-            for (int i = 0; i < count; i++)
-            {
-                sb.Append(text);
-            }
-
-            return sb.ToString();
+            return new StringBuilder().Insert(0, text, count).ToString();
         }
 
         private byte[] EncryptTwo(string text)
