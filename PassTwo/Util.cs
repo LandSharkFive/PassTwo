@@ -1,12 +1,11 @@
 ﻿using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 
 namespace PassTwo
 {
     internal class Util
     {
-        private string SaltOne = "jJ3LukLw";
-        private string SaltTwo = "E5W3yRvz";
         private byte[] SaltThree = new byte[32];
         private byte[] SaltFour = new byte[16] { 210, 67, 162, 175, 239, 47, 218, 77, 252, 234, 50, 127, 135, 12, 114, 224 };
         private string FileNameOne = String.Empty;
@@ -17,24 +16,21 @@ namespace PassTwo
             FileNameOne = name;
         }
 
-        private byte[] HashThree(string password, string salt)
+        private byte[] HashFour(string text)
         {
-            using (var sha256 = SHA256.Create())
+            if (String.IsNullOrEmpty(text))
             {
-                var salted = String.Concat(salt, password);
-                byte[] bytes = Encoding.UTF8.GetBytes(salted);
-                return sha256.ComputeHash(bytes);
+                return new byte[1];
             }
-        }
 
-        private byte[] HashFour(string password)
-        {
-            return HashThree(password, SaltOne).Reverse().ToArray();
-        }
+            try
+            {
+                byte[] array = Encoding.UTF8.GetBytes(Repeat(text, 3));
+                return new Rfc2898DeriveBytes(array, SaltFour, 1000, HashAlgorithmName.SHA256).GetBytes(32);
+            }
+            catch { }
 
-        private byte[] HashFive(string password)
-        {
-            return HashThree(password, SaltTwo).Reverse().ToArray();
+            return new byte[1];
         }
 
         private void SaveTwo(byte[] value)
@@ -65,15 +61,23 @@ namespace PassTwo
                 Console.WriteLine("Too long");
                 return;
             }
-            byte[] hash = HashFour(Repeat(pass, 3));
+            byte[] hash = HashFour(pass);
+            if (hash.Length < 32)
+            {
+                return;
+            }
 
             if (File.Exists(FileNameOne))
             {
                 byte[] mac = GetMac(FileNameOne);
+                if (mac.Length < 32)
+                {
+                    return;
+                }
                 if (mac.SequenceEqual(hash))
                 {
                     Console.Clear();
-                    GetSaltThree(pass);
+                    Array.Copy(hash, SaltThree, 32);
                     Job();
                 }
             }
@@ -127,7 +131,7 @@ namespace PassTwo
                         break;
                     case "D":
                         if (arg.Length > 1)
-                        { 
+                        {
                             DeleteName(arg[1]);
                         }
                         break;
@@ -152,12 +156,6 @@ namespace PassTwo
             }
 
             return String.Empty;
-        }
-
-        private void GetSaltThree(string text)
-        {
-            byte[] array = HashFive(Repeat(text, 3));
-            Array.Copy(array, SaltThree, 32);
         }
 
         private void Add()
@@ -248,18 +246,13 @@ namespace PassTwo
                         bw.Write(bytes);
                     }
                 }
-            } 
+            }
             catch { }
         }
 
         private byte[] EncryptSix()
         {
-            StringBuilder sb = new StringBuilder();
-            for (int i = 0; i < Accounts.Count; ++i)
-            {
-                sb.AppendLine(Accounts[i].GetString());
-            }
-            return EncryptTwo(sb.ToString());
+            return EncryptTwo(JsonSerializer.Serialize(Accounts));
         }
 
         private string DecryptSix(byte[] a)
@@ -281,19 +274,14 @@ namespace PassTwo
                         br.ReadBytes(32);
                         byte[] bytes = br.ReadBytes(numBytes);
                         string pt = DecryptSix(bytes);
-                        pt = pt.Replace("\r", "");
-                        string[] lines = pt.Split('\n');
-                        foreach (var item in lines)
+                        var list = JsonSerializer.Deserialize<List<Account>>(pt);
+                        foreach (var item in list)
                         {
-                            string[] parts = item.Split('|');
-                            if (parts.Length == 4)
-                            {
-                                Accounts.Add(new Account(parts[0], parts[1], parts[2]));
-                            }
+                            Accounts.Add(item);
                         }
                     }
                 }
-            } 
+            }
             catch { }
         }
 
@@ -304,17 +292,16 @@ namespace PassTwo
 
         private byte[] EncryptTwo(string text)
         {
-            return EncryptFive(SaltThree, text);
+            return EncryptFive(SaltThree, SaltFour, text);
         }
 
         private string DecryptTwo(byte[] bytes)
         {
-            return DecryptFive(SaltThree, bytes);
+            return DecryptFive(SaltThree, SaltFour, bytes);
         }
 
-        private byte[] EncryptFive(byte[] key, string plainText)
+        private byte[] EncryptFive(byte[] key, byte[] iv, string plainText)
         {
-            byte[] iv = new byte[16];
             byte[] array;
 
             Array.Copy(SaltFour, iv, 16);
@@ -341,11 +328,8 @@ namespace PassTwo
             return array;
         }
 
-        private string DecryptFive(byte[] key, byte[] cipherText)
+        private string DecryptFive(byte[] key, byte[] iv, byte[] cipherText)
         {
-            byte[] iv = new byte[16];
-
-            Array.Copy(SaltFour, iv, 16);
             using (Aes aes = Aes.Create())
             {
                 aes.Key = key;
