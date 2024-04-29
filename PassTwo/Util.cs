@@ -8,29 +8,23 @@ namespace PassTwo
     {
         private byte[] SaltThree = new byte[32];
         private byte[] SaltFour = new byte[16] { 210, 67, 162, 175, 239, 47, 218, 77, 252, 234, 50, 127, 135, 12, 114, 224 };
-        private string FileNameOne = String.Empty;
+        private string VaultName = String.Empty;
         private List<Account> Accounts = new List<Account>();
 
-        public void SetFileName(string name)
+        public void SetVaultName(string name)
         {
-            FileNameOne = name;
+            VaultName = name;
         }
 
         private byte[] HashFour(string text)
         {
-            if (String.IsNullOrEmpty(text))
-            {
-                return new byte[1];
-            }
-
             try
             {
                 byte[] array = Encoding.UTF8.GetBytes(Repeat(text, 3));
                 return new Rfc2898DeriveBytes(array, SaltFour, 1000, HashAlgorithmName.SHA256).GetBytes(32);
             }
             catch { }
-
-            return new byte[1];
+            return new byte[0];
         }
 
         private void SaveTwo(byte[] value)
@@ -39,7 +33,7 @@ namespace PassTwo
             RandomNumberGenerator.Create().GetBytes(block);
             Array.Clear(block, 0, 8);
             Array.Copy(value, 0, block, 8, 32);
-            File.WriteAllBytes(FileNameOne, block);
+            File.WriteAllBytes(VaultName, block);
         }
 
         internal void Setup()
@@ -67,9 +61,9 @@ namespace PassTwo
                 return;
             }
 
-            if (File.Exists(FileNameOne))
+            if (File.Exists(VaultName))
             {
-                byte[] mac = GetMac(FileNameOne);
+                byte[] mac = GetMac(VaultName);
                 if (mac.Length < 32)
                 {
                     return;
@@ -101,7 +95,7 @@ namespace PassTwo
                 }
             }
             catch { }
-            return new byte[1];
+            return new byte[0];
         }
 
         private void Job()
@@ -162,34 +156,36 @@ namespace PassTwo
         {
             var a = new Account();
             Console.Write("Service? ");
-            a.Service = Console.ReadLine();
+            string service = Console.ReadLine();
+            if (String.IsNullOrEmpty(service) || service.Length < 3)
+            {
+                Console.WriteLine("Too short");
+                return;
+            }
+            a.Service = service;
             Console.Write("User? ");
             a.User = Console.ReadLine();
             Console.Write("Password? ");
             a.Value = Console.ReadLine();
             Accounts.Add(a);
-            WriteFile(FileNameOne);
+            Accounts = Accounts.OrderBy(x => x.Service).ToList();
+            WriteFile(VaultName);
         }
 
         private void ShowList()
         {
-            ReadFile(FileNameOne);
+            ReadFile(VaultName);
             List<string> list = new List<string>();
             foreach (var act in Accounts)
             {
-                list.Add(act.Service);
-            }
-            list.Sort();
-            foreach (var svc in list)
-            {
-                Console.WriteLine(svc);
+                Console.WriteLine(act.Service);
             }
             Console.WriteLine();
         }
 
         private void GetName(string name)
         {
-            ReadFile(FileNameOne);
+            ReadFile(VaultName);
             foreach (var act in Accounts)
             {
                 if (act.Service.StartsWith(name))
@@ -203,17 +199,17 @@ namespace PassTwo
 
         private void DeleteName(string name)
         {
-            ReadFile(FileNameOne);
+            ReadFile(VaultName);
             foreach (var act in Accounts)
             {
-                if (act.Service.StartsWith(name) && name.Length > 3)
+                if (act.Service.StartsWith(name) && name.Length > 0)
                 {
                     Console.WriteLine("Are you sure?");
                     string result = Console.ReadLine();
                     if (IsYes(result))
                     {
                         Accounts.Remove(act);
-                        WriteFile(FileNameOne);
+                        WriteFile(VaultName);
                     }
                     break;
                 }
@@ -309,7 +305,6 @@ namespace PassTwo
             {
                 aes.Key = key;
                 aes.IV = iv;
-
                 ICryptoTransform encryptor = aes.CreateEncryptor(aes.Key, aes.IV);
 
                 using (MemoryStream memoryStream = new MemoryStream())

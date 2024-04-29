@@ -13,7 +13,7 @@
             }
             if (args.Length > 0) 
             {
-                util.SetFileName(args[0]);
+                util.SetVaultName(args[0]);
             }
 
             util.Setup();
