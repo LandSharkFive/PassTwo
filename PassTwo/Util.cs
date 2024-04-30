@@ -144,12 +144,14 @@ namespace PassTwo
 
         private string GetFirstLetter(string a)
         {
-            if (a.Length > 0)
+            if (String.IsNullOrEmpty(a))
+            {
+                return String.Empty;
+            }
+            else
             {
                 return a.Substring(0, 1);
             }
-
-            return String.Empty;
         }
 
         private void Add()
@@ -199,10 +201,14 @@ namespace PassTwo
 
         private void DeleteName(string name)
         {
+            if (String.IsNullOrEmpty(name))
+            {
+                return;
+            }
             ReadFile(VaultName);
             foreach (var act in Accounts)
             {
-                if (act.Service.StartsWith(name) && name.Length > 0)
+                if (act.Service.StartsWith(name))
                 {
                     Console.WriteLine("Are you sure?");
                     string result = Console.ReadLine();
@@ -298,9 +304,6 @@ namespace PassTwo
 
         private byte[] EncryptFive(byte[] key, byte[] iv, string plainText)
         {
-            byte[] array;
-
-            Array.Copy(SaltFour, iv, 16);
             using (Aes aes = Aes.Create())
             {
                 aes.Key = key;
@@ -315,12 +318,10 @@ namespace PassTwo
                         {
                             streamWriter.Write(plainText);
                         }
-
-                        array = memoryStream.ToArray();
                     }
+                    return memoryStream.ToArray();
                 }
             }
-            return array;
         }
 
         private string DecryptFive(byte[] key, byte[] iv, byte[] cipherText)
