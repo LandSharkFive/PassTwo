@@ -45,7 +45,7 @@ namespace PassTwo
             {
                 return;
             }
-            if (pass.Length < 10)
+            if (pass.Length < 12)
             {
                 Console.WriteLine("Too short");
                 return;
