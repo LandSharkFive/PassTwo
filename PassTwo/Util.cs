@@ -6,7 +6,7 @@ namespace PassTwo
 {
     internal class Util
     {
-        private byte[] SaltThree = new byte[32];
+        private byte[] MasterKey = new byte[32];
         private byte[] SaltFour = new byte[16] { 210, 67, 162, 175, 239, 47, 218, 77, 252, 234, 50, 127, 135, 12, 114, 224 };
         private string VaultName = String.Empty;
         private List<Account> Accounts = new List<Account>();
@@ -38,7 +38,7 @@ namespace PassTwo
 
         internal void Setup()
         {
-            RandomNumberGenerator.Create().GetBytes(SaltThree);
+            RandomNumberGenerator.Create().GetBytes(MasterKey);
             Console.WriteLine("Password?");
             string pass = Console.ReadLine();
             if (String.IsNullOrEmpty(pass))
@@ -71,7 +71,7 @@ namespace PassTwo
                 if (mac.SequenceEqual(hash))
                 {
                     Console.Clear();
-                    Array.Copy(hash, SaltThree, 32);
+                    Array.Copy(hash, MasterKey, 32);
                     Job();
                 }
             }
@@ -208,7 +208,7 @@ namespace PassTwo
             ReadFile(VaultName);
             foreach (var act in Accounts)
             {
-                if (act.Service.StartsWith(name))
+                if (act.Service.Equals(name))
                 {
                     Console.WriteLine("Are you sure?");
                     string result = Console.ReadLine();
@@ -294,12 +294,12 @@ namespace PassTwo
 
         private byte[] EncryptTwo(string text)
         {
-            return EncryptFive(SaltThree, SaltFour, text);
+            return EncryptFive(MasterKey, SaltFour, text);
         }
 
         private string DecryptTwo(byte[] bytes)
         {
-            return DecryptFive(SaltThree, SaltFour, bytes);
+            return DecryptFive(MasterKey, SaltFour, bytes);
         }
 
         private byte[] EncryptFive(byte[] key, byte[] iv, string plainText)
