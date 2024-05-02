@@ -6,8 +6,10 @@ namespace PassTwo
 {
     internal class Util
     {
-        private byte[] MasterKey = new byte[32];
-        private byte[] SaltFour = new byte[16] { 210, 67, 162, 175, 239, 47, 218, 77, 252, 234, 50, 127, 135, 12, 114, 224 };
+        private byte[] FirstHash = new byte[32];
+        private byte[] SecondHash = new byte[32];
+        private byte[] SaltOne = new byte[16];
+        private byte[] SaltTwo = new byte[16];
         private string VaultName = String.Empty;
         private List<Account> Accounts = new List<Account>();
 
@@ -16,29 +18,46 @@ namespace PassTwo
             VaultName = name;
         }
 
-        private byte[] HashFour(string text)
+        private byte[] HashFour(string text, byte[] salt)
         {
             try
             {
                 byte[] array = Encoding.UTF8.GetBytes(Repeat(text, 3));
-                return new Rfc2898DeriveBytes(array, SaltFour, 1000, HashAlgorithmName.SHA256).GetBytes(32);
+                return new Rfc2898DeriveBytes(array, salt, 1000, HashAlgorithmName.SHA256).GetBytes(32);
             }
             catch { }
             return new byte[0];
         }
 
-        private void SaveTwo(byte[] value)
+        private byte[] HashFive(string text, byte[] salt)
+        {
+            try
+            {
+                byte[] array = Encoding.UTF8.GetBytes(Repeat(text, 3));
+                return new Rfc2898DeriveBytes(array, salt, 800, HashAlgorithmName.SHA512).GetBytes(32);
+            }
+            catch { }
+            return new byte[0];
+        }
+
+
+        private void SaveTwo()
         {
             byte[] block = new byte[512];
             RandomNumberGenerator.Create().GetBytes(block);
             Array.Clear(block, 0, 8);
-            Array.Copy(value, 0, block, 8, 32);
+            Array.Copy(FirstHash, 0, block, 8, 32);
+            Array.Copy(SaltOne, 0, block, 40, 16);
+            Array.Copy(SaltTwo, 0, block, 56, 16);
             File.WriteAllBytes(VaultName, block);
         }
 
         internal void Setup()
         {
-            RandomNumberGenerator.Create().GetBytes(MasterKey);
+            RandomNumberGenerator.Create().GetBytes(FirstHash);
+            RandomNumberGenerator.Create().GetBytes(SecondHash);
+            RandomNumberGenerator.Create().GetBytes(SaltOne);
+            RandomNumberGenerator.Create().GetBytes(SaltTwo);
             Console.WriteLine("Password?");
             string pass = Console.ReadLine();
             if (String.IsNullOrEmpty(pass))
@@ -55,47 +74,45 @@ namespace PassTwo
                 Console.WriteLine("Too long");
                 return;
             }
-            byte[] hash = HashFour(pass);
-            if (hash.Length < 32)
-            {
-                return;
-            }
-
             if (File.Exists(VaultName))
             {
-                byte[] mac = GetMac(VaultName);
-                if (mac.Length < 32)
+                GetMac(VaultName);
+                byte[] hash = HashFour(pass, SaltOne);
+                if (hash.Length < 32)
                 {
                     return;
                 }
-                if (mac.SequenceEqual(hash))
+                if (FirstHash.SequenceEqual(hash))
                 {
                     Console.Clear();
-                    Array.Copy(hash, MasterKey, 32);
+                    SecondHash = HashFive(pass, SaltTwo);
                     Job();
                 }
             }
             else
             {
-                SaveTwo(hash);
+                FirstHash = HashFour(pass, SaltOne);
+                SaveTwo();
             }
         }
 
-        private byte[] GetMac(string fileName)
+        private void GetMac(string fileName)
         {
             try
             {
                 using (var stream = File.Open(fileName, FileMode.Open, FileAccess.Read))
                 {
-                    stream.Position = 8;
                     using (BinaryReader br = new BinaryReader(stream, Encoding.UTF8, false))
                     {
-                        return br.ReadBytes(32);
+                        int length = br.ReadInt32();
+                        int numBytes = br.ReadInt32();
+                        FirstHash = br.ReadBytes(32);
+                        SaltOne = br.ReadBytes(16);
+                        SaltTwo = br.ReadBytes(16);
                     }
                 }
             }
             catch { }
-            return new byte[0];
         }
 
         private void Job()
@@ -244,7 +261,7 @@ namespace PassTwo
                         byte[] bytes = EncryptSix();
                         bw.Write(Accounts.Count);
                         bw.Write(bytes.Length);
-                        bw.Seek(40, SeekOrigin.Begin);
+                        bw.Seek(72, SeekOrigin.Begin);
                         bw.Write(bytes);
                     }
                 }
@@ -273,7 +290,7 @@ namespace PassTwo
                     {
                         int length = br.ReadInt32();
                         int numBytes = br.ReadInt32();
-                        br.ReadBytes(32);
+                        br.ReadBytes(64);
                         byte[] bytes = br.ReadBytes(numBytes);
                         string pt = DecryptSix(bytes);
                         var list = JsonSerializer.Deserialize<List<Account>>(pt);
@@ -294,12 +311,12 @@ namespace PassTwo
 
         private byte[] EncryptTwo(string text)
         {
-            return EncryptFive(MasterKey, SaltFour, text);
+            return EncryptFive(SecondHash, SaltTwo, text);
         }
 
         private string DecryptTwo(byte[] bytes)
         {
-            return DecryptFive(MasterKey, SaltFour, bytes);
+            return DecryptFive(SecondHash, SaltTwo, bytes);
         }
 
         private byte[] EncryptFive(byte[] key, byte[] iv, string plainText)
