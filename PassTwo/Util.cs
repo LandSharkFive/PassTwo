@@ -375,17 +375,17 @@ namespace PassTwo
             }
         }
 
-        byte[] Protect(byte[] a)
+        private byte[] Protect(byte[] a)
         {
             return ProtectThree(a, SaltThree);
         }
 
-        byte[] UnProtect(byte[] a)
+        private byte[] UnProtect(byte[] a)
         {
             return ProtectThree(a, SaltThree);
         }
 
-        byte[] ProtectThree(byte[] a, byte[] b)
+        private byte[] ProtectThree(byte[] a, byte[] b)
         {
             byte[] c = new byte[a.Length];
             for (int i = 0; i < a.Length; i++)
