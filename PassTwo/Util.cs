@@ -10,7 +10,7 @@ namespace PassTwo
         private byte[] SecondHash = new byte[32];
         private byte[] SaltOne = new byte[16];
         private byte[] SaltTwo = new byte[16];
-        private byte[] SaltThree = new byte[160];
+        private int SeedOne;
 
         private string VaultName = String.Empty;
         private List<Account> Accounts = new List<Account>();
@@ -20,47 +20,12 @@ namespace PassTwo
             VaultName = name;
         }
 
-        private byte[] HashFour(string text, byte[] salt)
-        {
-            try
-            {
-                byte[] array = Encoding.UTF8.GetBytes(Repeat(text, 3));
-                return new Rfc2898DeriveBytes(array, salt, 1000, HashAlgorithmName.SHA256).GetBytes(32);
-            }
-            catch { }
-            return new byte[0];
-        }
-
-        private byte[] HashFive(string text, byte[] salt)
-        {
-            try
-            {
-                byte[] array = Encoding.UTF8.GetBytes(Repeat(text, 3));
-                return new Rfc2898DeriveBytes(array, salt, 800, HashAlgorithmName.SHA512).GetBytes(32);
-            }
-            catch { }
-            return new byte[0];
-        }
-
-
-        private void SaveTwo()
-        {
-            byte[] block = new byte[512];
-            RandomNumberGenerator.Create().GetBytes(block);
-            Array.Clear(block, 0, 8);
-            Array.Copy(FirstHash, 0, block, 8, 32);
-            Array.Copy(SaltOne, 0, block, 40, 16);
-            Array.Copy(SaltTwo, 0, block, 56, 16);
-            File.WriteAllBytes(VaultName, block);
-        }
-
-        internal void Setup()
+        public void Setup()
         {
             RandomNumberGenerator.Create().GetBytes(FirstHash);
             RandomNumberGenerator.Create().GetBytes(SecondHash);
             RandomNumberGenerator.Create().GetBytes(SaltOne);
             RandomNumberGenerator.Create().GetBytes(SaltTwo);
-            GetArray(SaltThree, 107481);
             Console.WriteLine("Password?");
             string pass = Console.ReadLine();
             if (String.IsNullOrEmpty(pass))
@@ -98,6 +63,41 @@ namespace PassTwo
                 SaveTwo();
             }
         }
+
+        private byte[] HashFour(string text, byte[] salt)
+        {
+            try
+            {
+                byte[] array = Encoding.UTF8.GetBytes(Repeat(text, 3));
+                return new Rfc2898DeriveBytes(array, salt, 1000, HashAlgorithmName.SHA256).GetBytes(32);
+            }
+            catch { }
+            return new byte[0];
+        }
+
+        private byte[] HashFive(string text, byte[] salt)
+        {
+            try
+            {
+                byte[] array = Encoding.UTF8.GetBytes(Repeat(text, 3));
+                return new Rfc2898DeriveBytes(array, salt, 800, HashAlgorithmName.SHA512).GetBytes(32);
+            }
+            catch { }
+            return new byte[0];
+        }
+
+
+        private void SaveTwo()
+        {
+            byte[] block = new byte[512];
+            RandomNumberGenerator.Create().GetBytes(block);
+            Array.Clear(block, 0, 8);
+            Array.Copy(FirstHash, 0, block, 8, 32);
+            Array.Copy(SaltOne, 0, block, 40, 16);
+            Array.Copy(SaltTwo, 0, block, 56, 16);
+            File.WriteAllBytes(VaultName, block);
+        }
+
 
         private void GetMac(string fileName)
         {
@@ -365,37 +365,33 @@ namespace PassTwo
             }
         }
 
-        private void GetArray(byte[] a, int b)
-        {
-            int seed = b;
-            for (int i = 0; i < a.Length; i++)
-            {
-                seed = (seed * 457 + 11) % 1048576;
-                a[i] = Convert.ToByte((seed * 3) % 256);
-            }
-        }
-
         private byte[] Protect(byte[] a)
         {
-            return ProtectThree(a, SaltThree);
+            return ProtectThree(a);
         }
 
         private byte[] UnProtect(byte[] a)
         {
-            return ProtectThree(a, SaltThree);
+            return ProtectThree(a);
         }
 
-        private byte[] ProtectThree(byte[] a, byte[] b)
+        private byte[] ProtectThree(byte[] a)
         {
+            SeedOne = 107481;
             byte[] c = new byte[a.Length];
             for (int i = 0; i < a.Length; i++)
             {
-                c[i] = Convert.ToByte(a[i] ^ b[i % b.Length]);
+                byte x = Convert.ToByte((GetNext() * 3) % 256); 
+                c[i] = Convert.ToByte(a[i] ^ x);
             }
             return c;
         }
 
+        private int GetNext()
+        {
+            SeedOne = (SeedOne * 457 + 11) % 1048576;
+            return SeedOne;
+        }
 
     }
-
 }
