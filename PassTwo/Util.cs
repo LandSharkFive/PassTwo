@@ -10,6 +10,8 @@ namespace PassTwo
         private byte[] SecondHash = new byte[32];
         private byte[] SaltOne = new byte[16];
         private byte[] SaltTwo = new byte[16];
+        private byte[] SaltThree = new byte[160];
+
         private string VaultName = String.Empty;
         private List<Account> Accounts = new List<Account>();
 
@@ -58,6 +60,7 @@ namespace PassTwo
             RandomNumberGenerator.Create().GetBytes(SecondHash);
             RandomNumberGenerator.Create().GetBytes(SaltOne);
             RandomNumberGenerator.Create().GetBytes(SaltTwo);
+            GetArray(SaltThree, 107481);
             Console.WriteLine("Password?");
             string pass = Console.ReadLine();
             if (String.IsNullOrEmpty(pass))
@@ -85,7 +88,7 @@ namespace PassTwo
                 if (FirstHash.SequenceEqual(hash))
                 {
                     Console.Clear();
-                    SecondHash = HashFive(pass, SaltTwo);
+                    SecondHash = Protect(HashFive(pass, SaltTwo));
                     Job();
                 }
             }
@@ -311,12 +314,12 @@ namespace PassTwo
 
         private byte[] EncryptTwo(string text)
         {
-            return EncryptFive(SecondHash, SaltTwo, text);
+            return EncryptFive(UnProtect(SecondHash), SaltTwo, text);
         }
 
         private string DecryptTwo(byte[] bytes)
         {
-            return DecryptFive(SecondHash, SaltTwo, bytes);
+            return DecryptFive(UnProtect(SecondHash), SaltTwo, bytes);
         }
 
         private byte[] EncryptFive(byte[] key, byte[] iv, string plainText)
@@ -362,5 +365,37 @@ namespace PassTwo
             }
         }
 
+        private void GetArray(byte[] a, int b)
+        {
+            int seed = b;
+            for (int i = 0; i < a.Length; i++)
+            {
+                seed = (seed * 457 + 11) % 1048576;
+                a[i] = Convert.ToByte((seed * 3) % 256);
+            }
+        }
+
+        byte[] Protect(byte[] a)
+        {
+            return ProtectThree(a, SaltThree);
+        }
+
+        byte[] UnProtect(byte[] a)
+        {
+            return ProtectThree(a, SaltThree);
+        }
+
+        byte[] ProtectThree(byte[] a, byte[] b)
+        {
+            byte[] c = new byte[a.Length];
+            for (int i = 0; i < a.Length; i++)
+            {
+                c[i] = Convert.ToByte(a[i] ^ b[i % b.Length]);
+            }
+            return c;
+        }
+
+
     }
+
 }
