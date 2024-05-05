@@ -10,10 +10,8 @@ namespace PassTwo
         private byte[] SecondHash = new byte[32];
         private byte[] SaltOne = new byte[16];
         private byte[] SaltTwo = new byte[16];
-        private int SeedOne;
 
         private string VaultName = String.Empty;
-        private List<Account> Accounts = new List<Account>();
 
         public void SetVaultName(string name)
         {
@@ -53,7 +51,7 @@ namespace PassTwo
                 if (FirstHash.SequenceEqual(hash))
                 {
                     Console.Clear();
-                    SecondHash = Protect(HashFive(pass, SaltTwo));
+                    SecondHash = HashFive(pass, SaltTwo);
                     Job();
                 }
             }
@@ -189,34 +187,38 @@ namespace PassTwo
             a.User = Console.ReadLine();
             Console.Write("Password? ");
             a.Value = Console.ReadLine();
-            Accounts.Add(a);
-            Accounts = Accounts.OrderBy(x => x.Service).ToList();
-            WriteFile(VaultName);
+            List<Account> accounts = ReadFile(VaultName);
+            accounts.Add(a);
+            accounts = accounts.OrderBy(x => x.Service).ToList();
+            WriteFile(VaultName, accounts);
+            accounts.Clear();
         }
 
         private void ShowList()
         {
-            ReadFile(VaultName);
+            List<Account> accounts = ReadFile(VaultName);
             List<string> list = new List<string>();
-            foreach (var act in Accounts)
+            foreach (var item in accounts)
             {
-                Console.WriteLine(act.Service);
+                Console.WriteLine(item.Service);
             }
             Console.WriteLine();
+            accounts.Clear();
         }
 
         private void GetName(string name)
         {
-            ReadFile(VaultName);
-            foreach (var act in Accounts)
+            List<Account> accounts = ReadFile(VaultName);
+            foreach (var item in accounts)
             {
-                if (act.Service.StartsWith(name))
+                if (item.Service.StartsWith(name))
                 {
-                    act.Print();
+                    item.Print();
                     break;
                 }
             }
             Console.WriteLine();
+            accounts.Clear();
         }
 
         private void DeleteName(string name)
@@ -225,22 +227,23 @@ namespace PassTwo
             {
                 return;
             }
-            ReadFile(VaultName);
-            foreach (var act in Accounts)
+            List<Account> accounts = ReadFile(VaultName);
+            foreach (var item in accounts)
             {
-                if (act.Service.Equals(name))
+                if (item.Service.Equals(name))
                 {
                     Console.WriteLine("Are you sure?");
                     string result = Console.ReadLine();
                     if (IsYes(result))
                     {
-                        Accounts.Remove(act);
-                        WriteFile(VaultName);
+                        accounts.Remove(item);
+                        WriteFile(VaultName, accounts);
                     }
                     break;
                 }
             }
             Console.WriteLine();
+            accounts.Clear();
         }
 
         private bool IsYes(string a)
@@ -253,7 +256,7 @@ namespace PassTwo
             return false;
         }
 
-        private void WriteFile(string fileName)
+        private void WriteFile(string fileName, List<Account> accounts)
         {
             try
             {
@@ -261,8 +264,8 @@ namespace PassTwo
                 {
                     using (var bw = new BinaryWriter(stream, Encoding.UTF8, false))
                     {
-                        byte[] bytes = EncryptSix();
-                        bw.Write(Accounts.Count);
+                        byte[] bytes = EncryptSix(accounts);
+                        bw.Write(accounts.Count);
                         bw.Write(bytes.Length);
                         bw.Seek(72, SeekOrigin.Begin);
                         bw.Write(bytes);
@@ -272,9 +275,9 @@ namespace PassTwo
             catch { }
         }
 
-        private byte[] EncryptSix()
+        private byte[] EncryptSix(List<Account> accounts)
         {
-            return EncryptTwo(JsonSerializer.Serialize(Accounts));
+            return EncryptTwo(JsonSerializer.Serialize(accounts));
         }
 
         private string DecryptSix(byte[] a)
@@ -282,11 +285,11 @@ namespace PassTwo
             return DecryptTwo(a);
         }
 
-        private void ReadFile(string fileName)
+        private List<Account> ReadFile(string fileName)
         {
             try
             {
-                Accounts.Clear();
+                List<Account> accounts = new List<Account>();
                 using (var stream = File.Open(fileName, FileMode.Open, FileAccess.Read))
                 {
                     using (BinaryReader br = new BinaryReader(stream, Encoding.UTF8, false))
@@ -299,12 +302,14 @@ namespace PassTwo
                         var list = JsonSerializer.Deserialize<List<Account>>(pt);
                         foreach (var item in list)
                         {
-                            Accounts.Add(item);
+                            accounts.Add(item);
                         }
                     }
                 }
+                return accounts;
             }
             catch { }
+            return new List<Account>();
         }
 
         private string Repeat(string text, int count)
@@ -314,12 +319,12 @@ namespace PassTwo
 
         private byte[] EncryptTwo(string text)
         {
-            return EncryptFive(UnProtect(SecondHash), SaltTwo, text);
+            return EncryptFive(SecondHash, SaltTwo, text);
         }
 
         private string DecryptTwo(byte[] bytes)
         {
-            return DecryptFive(UnProtect(SecondHash), SaltTwo, bytes);
+            return DecryptFive(SecondHash, SaltTwo, bytes);
         }
 
         private byte[] EncryptFive(byte[] key, byte[] iv, string plainText)
@@ -365,33 +370,7 @@ namespace PassTwo
             }
         }
 
-        private byte[] Protect(byte[] a)
-        {
-            return ProtectThree(a);
-        }
 
-        private byte[] UnProtect(byte[] a)
-        {
-            return ProtectThree(a);
-        }
-
-        private byte[] ProtectThree(byte[] a)
-        {
-            SeedOne = 107481;
-            byte[] c = new byte[a.Length];
-            for (int i = 0; i < a.Length; i++)
-            {
-                byte x = Convert.ToByte((GetNext() * 3) % 256); 
-                c[i] = Convert.ToByte(a[i] ^ x);
-            }
-            return c;
-        }
-
-        private int GetNext()
-        {
-            SeedOne = (SeedOne * 457 + 11) % 1048576;
-            return SeedOne;
-        }
 
     }
 }
