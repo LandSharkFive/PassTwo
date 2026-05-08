@@ -1,0 +1,24 @@
+PASSTWO SESSION EXAMPLE:
+------------------------
+1. Launch: 
+   > passtwo secret.dat
+
+2. Initial Setup:
+   "Enter Master Password:" -> user123
+
+3. Adding a Password:
+   Command: A
+   Service Name: GitHub
+   User ID: dev_user
+   Password: super_secret_password
+
+4. Retrieving a Password:
+   Command: G GitHub
+   Output: [Service: GitHub] [User: dev_user] [Pass: super_secret_password]
+
+5. Listing all services:
+   Command: L
+   Output: GitHub, Facebook, Gmail
+
+6. Exit:
+   Command: Q

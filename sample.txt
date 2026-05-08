@@ -1,0 +1,23 @@
+Get List Add Delete Quit
+Command?
+L
+intuit
+facebook
+
+Get List Add Delete Quit
+Command?
+g intuit
+intuit
+david.collin
+MrSpocktyu3
+
+Get List Add Delete Quit
+Command?
+g facebook
+david.collin
+FragNaDon44
+
+Get List Add Delete Quit
+Command?
+Q
+
